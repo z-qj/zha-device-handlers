@@ -6,6 +6,31 @@ from zigpy.zcl.foundation import BaseAttributeDefs, DataTypeId, ZCLAttributeDef
 
 from zhaquirks.builder import QuirkBuilder
 from zhaquirks.clusters import CustomCluster
+from zhaquirks.const import (
+    CLUSTER_ID,
+    COMMAND,
+    ENDPOINT_ID,
+    ZHA_SEND_EVENT,
+)
+
+# Attribute Define
+RELAY_DETACH_ATTR_ID = 0x0028
+RELAY_DETACH_ACTION = "relay_detach_action"
+
+ACTION_SINGLE_CLICK = 0x01
+ACTION_DOUBLE_CLICK = 0x02
+ACTION_LONG_PRESS = 0x03
+ACTION_FOLLOW_ON = 0x04
+ACTION_FOLLOW_OFF = 0x05
+
+# Event Name
+ACTION_TO_COMMAND = {
+    ACTION_SINGLE_CLICK: "single_click",
+    ACTION_DOUBLE_CLICK: "double_click",
+    ACTION_LONG_PRESS: "long_press",
+    ACTION_FOLLOW_ON: "follow_on",
+    ACTION_FOLLOW_OFF: "follow_off",
+}
 
 
 class SonoffExternalSwitchTriggerType(types.enum8):
@@ -46,6 +71,19 @@ class SonoffCluster(CustomCluster):
             type=t.Bool,
             manufacturer_code=None,
         )
+        relay_spera_key_action_event = ZCLAttributeDef(
+            id=RELAY_DETACH_ATTR_ID,
+            type=t.uint8_t,
+            manufacturer_code=None,
+        )
+
+    def _update_attribute(self, attrid, value):
+        super()._update_attribute(attrid, value)
+
+        if attrid == RELAY_DETACH_ATTR_ID:
+            # 根据值获取对应的命令字符串，若未定义则使用 "unknown"
+            command = ACTION_TO_COMMAND.get(value, "unknown_action")
+            self.listener_event(ZHA_SEND_EVENT, command, {})
 
 
 (
@@ -78,6 +116,35 @@ class SonoffCluster(CustomCluster):
         SonoffCluster.cluster_id,
         translation_key="network_led",
         fallback_name="Network LED",
+    )
+    .device_automation_triggers(
+        {
+            ("single_click", RELAY_DETACH_ACTION): {
+                CLUSTER_ID: SonoffCluster.cluster_id,
+                ENDPOINT_ID: 1,
+                COMMAND: "single_click",
+            },
+            ("double_click", RELAY_DETACH_ACTION): {
+                CLUSTER_ID: SonoffCluster.cluster_id,
+                ENDPOINT_ID: 1,
+                COMMAND: "double_click",
+            },
+            ("long_press", RELAY_DETACH_ACTION): {
+                CLUSTER_ID: SonoffCluster.cluster_id,
+                ENDPOINT_ID: 1,
+                COMMAND: "long_press",
+            },
+            ("follow_on", RELAY_DETACH_ACTION): {
+                CLUSTER_ID: SonoffCluster.cluster_id,
+                ENDPOINT_ID: 1,
+                COMMAND: "follow_on",
+            },
+            ("follow_off", RELAY_DETACH_ACTION): {
+                CLUSTER_ID: SonoffCluster.cluster_id,
+                ENDPOINT_ID: 1,
+                COMMAND: "follow_off",
+            },
+        }
     )
     .add_to_registry()
 )
